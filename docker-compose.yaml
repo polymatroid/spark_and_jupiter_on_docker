@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  spark-master:
+    build: .
+    command: bin/spark-class org.apache.spark.deploy.master.Master
+    volumes:
+      - "./scripts:/opt/bitnami/spark/scripts"
+    ports:
+      - "9090:8080"   # Spark web UI
+      - "7077:7077"   # Spark master por
+
+  spark-worker-1:
+    build: .
+    command: bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    depends_on:
+      - spark-master
+    environment:
+      SPARK_MODE: worker
+      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_MEMORY: 1g
+      SPARK_MASTER_URL: spark://spark-master:7077
+
+  # spark-worker-2:
+  #   image: bitnami/spark:latest
+  #   command: bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+  #   depends_on:
+  #     - spark-master
+  #   environment:
+  #   SPARK_MODE: worker
+  #   SPARK_WORKER_CORES: 2
+  #   SPARK_WORKER_MEMORY: 1g
+  #   SPARK_MASTER_URL: spark://spark-master:7077
+
+  jupyter:
+    build: ./jupyter
+    user: '0'
+    environment:
+      - JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --notebook-dir=/opt/app/data --allow-root
+    volumes:
+      - "./data:/opt/app/data"  # Mount volume for JupyterLab data
+    ports:
+      - "8888:8888"   # JupyterLab port
+    depends_on:
+      - spark-master
